@@ -1,6 +1,12 @@
 #include "slang/ast/Compilation.h"
 #include "slang/driver/Driver.h"
+#include "slang/syntax/SyntaxFwd.h"
+#include "slang/syntax/SyntaxNode.h"
+#include "slang/syntax/SyntaxTree.h"
+#include "slang/syntax/SyntaxPrinter.h"
 #include "slang/util/VersionInfo.h"
+#include "slang/syntax/SyntaxVisitor.h"
+#include <iostream>
 
 using namespace slang;
 using namespace slang::driver;
@@ -38,7 +44,19 @@ int main(int argc, char **argv)
 		return 2;
 
 	bool ok = driver.parseAllSources();
-	ok &= driver.runFullCompilation();
-
+	if (ok) {
+		slang::syntax::SyntaxPrinter sp;
+		auto rt = driver.syntaxTrees[0]->root().childNode(0);
+		rt->visit(syntax::makeSyntaxVisitor(
+			[&](auto &v,
+			    const slang::syntax::ConcurrentAssertionStatementSyntax
+				    &node) {
+				sp.printExcludingLeadingComments(
+					  *node.propertySpec)
+					.append("\n");
+				v.visitDefault(node);
+			}));
+		std::cout << sp.str();
+	}
 	return ok ? 0 : 3;
 }
